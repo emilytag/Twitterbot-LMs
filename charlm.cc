@@ -1,14 +1,14 @@
-#include "cnn/nodes.h"
-#include "cnn/cnn.h"
-#include "cnn/training.h"
-#include "cnn/timing.h"
-#include "cnn/rnn.h"
-#include "cnn/gru.h"
-#include "cnn/lstm.h"
-#include "cnn/dict.h"
-#include "cnn/expr.h"
-#include "cnn/cfsm-builder.h"
-#include "cnn/hsm-builder.h"
+#include "dynet/nodes.h"
+#include "dynet/dynet.h"
+#include "dynet/training.h"
+#include "dynet/timing.h"
+#include "dynet/rnn.h"
+#include "dynet/gru.h"
+#include "dynet/lstm.h"
+#include "dynet/dict.h"
+#include "dynet/expr.h"
+#include "dynet/cfsm-builder.h"
+#include "dynet/hsm-builder.h"
 
 #include <algorithm>
 #include <iostream>
@@ -24,9 +24,9 @@
 #include <boost/regex.hpp>
 
 using namespace std;
-using namespace cnn;
+using namespace dynet;
 
-cnn::Dict char_d;
+dynet::Dict char_d;
 int kSOS;
 int kEOS;
 
@@ -55,7 +55,7 @@ inline vector<int> UTF8split(string s) {
   vector<int> chars;
   while(cur < s.size()) {
     size_t len = UTF8Len(s[cur]);
-    chars.push_back(char_d.Convert(s.substr(cur, len)));
+    chars.push_back(char_d.convert(s.substr(cur, len)));
     cur += len;
   }
 
@@ -64,9 +64,9 @@ inline vector<int> UTF8split(string s) {
 
 template <class Builder>
 struct CharLSTM {
-  LookupParameters* p_char;
-  Parameters* p_R;
-  Parameters* p_bias;
+  LookupParameter p_char;
+  Parameter p_R;
+  Parameter p_bias;
   Builder builder;
   explicit CharLSTM(Model& model) : builder(LAYERS, INPUT_DIM, HIDDEN_DIM, &model) {
     p_char = model.add_lookup_parameters(CHAR_DIM, {INPUT_DIM}); 
@@ -124,7 +124,7 @@ struct CharLSTM {
       
       unsigned w = 0;
       while (w == 0 || (int)w == kSOS) {
-        auto dist = as_vector(cg.incremental_forward());
+        auto dist = as_vector(cg.incremental_forward(ydist));
         double p = rand01();
         for (; w < dist.size(); ++w) {
           p -= dist[w];
@@ -132,7 +132,7 @@ struct CharLSTM {
         }
         if (w == dist.size()) w = kEOS;
       }
-      cerr << char_d.Convert(w);
+      cerr << char_d.convert(w);
       cur = w;
     }
     cerr << endl;
@@ -160,7 +160,7 @@ vector<string> ReadData(string filename) {
       size_t cur = 0;
       while (cur < line.size()) {
           size_t len = UTF8Len(line[cur]);
-          char_d.Convert(line.substr(cur, len));
+          char_d.convert(line.substr(cur, len));
           cur += len;
       }
     }
@@ -171,7 +171,7 @@ vector<string> ReadData(string filename) {
 
 
 int main(int argc, char** argv) {
-  cnn::Initialize(argc, argv);
+  dynet::initialize(argc, argv);
 
   bool isTrain = true;
   if (argc == 6){
@@ -185,8 +185,8 @@ int main(int argc, char** argv) {
          << " train dev output.model [input.model] -t \n"; 
     return 1;
   }
-  kSOS = char_d.Convert("始");
-  kEOS = char_d.Convert("終");
+  kSOS = char_d.convert("始");
+  kEOS = char_d.convert("終");
   if (isTrain) {
 
       Model model;     
@@ -194,8 +194,8 @@ int main(int argc, char** argv) {
       vector<string> training = ReadData(argv[1]);
       vector<string> dev = ReadData(argv[2]);
 
-      char_d.Freeze(); //no new friends
-      char_d.SetUnk("<unk>");
+      char_d.freeze(); //no new friends
+      //char_d.SetUnk("<unk>");
       CHAR_DIM = char_d.size();
 
       Trainer* sgd = new SimpleSGDTrainer(&model);
@@ -241,9 +241,9 @@ int main(int argc, char** argv) {
           auto& training_sentence = training[order[si]];
           chars += training_sentence.size();
           ++si;
-          word_lstm.BuildGraph(training_sentence, cg);
-          loss += as_scalar(cg.incremental_forward());
-          cg.backward();
+          Expression loss_expr = word_lstm.BuildGraph(training_sentence, cg);
+          loss += as_scalar(cg.forward(loss_expr));
+          cg.backward(loss_expr);
           sgd->update();
           ++lines;
       }
@@ -260,8 +260,8 @@ int main(int argc, char** argv) {
         int dchars = 0;
         for (auto& dev_sentence : dev) {
           ComputationGraph cg;
-          word_lstm.BuildGraph(dev_sentence, cg);
-          dloss += as_scalar(cg.forward()); //check in the file thats having a problem, not able to find the index
+          Expression loss_expr = word_lstm.BuildGraph(dev_sentence, cg);
+          dloss += as_scalar(cg.forward(loss_expr)); //check in the file thats having a problem, not able to find the index
           dchars += dev_sentence.size();
         }
         if (dloss < best) {

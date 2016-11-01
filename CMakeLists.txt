@@ -1,4 +1,4 @@
-PROJECT(disambiguation)
+PROJECT(languagemodels)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
@@ -23,17 +23,17 @@ set(LIBS ${LIBS} ${Boost_LIBRARIES})
 # look for Eigen
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/cnn)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/dynet)
 
 FIND_PACKAGE(Threads REQUIRED)
 set(LIBS ${LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
-add_subdirectory(cnn)
+add_subdirectory(dynet)
 ADD_EXECUTABLE(charlm charlm.cc)
 ADD_EXECUTABLE(wordlm wordlm.cc)
-ADD_EXECUTABLE(sample sample.cc)
-target_link_libraries(charlm cnn ${LIBS})
-target_link_libraries(wordlm cnn ${LIBS})
-target_link_libraries(sample cnn ${LIBS})
+
+target_link_libraries(charlm dynet ${LIBS})
+target_link_libraries(wordlm dynet ${LIBS})
+
 
 enable_testing()
