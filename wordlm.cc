@@ -1,14 +1,14 @@
-#include "cnn/nodes.h"
-#include "cnn/cnn.h"
-#include "cnn/training.h"
-#include "cnn/timing.h"
-#include "cnn/rnn.h"
-#include "cnn/gru.h"
-#include "cnn/lstm.h"
-#include "cnn/dict.h"
-# include "cnn/expr.h"
-#include "cnn/cfsm-builder.h"
-#include "cnn/hsm-builder.h"
+#include "dynet/nodes.h"
+#include "dynet/dynet.h"
+#include "dynet/training.h"
+#include "dynet/timing.h"
+#include "dynet/rnn.h"
+#include "dynet/gru.h"
+#include "dynet/lstm.h"
+#include "dynet/dict.h"
+# include "dynet/expr.h"
+#include "dynet/cfsm-builder.h"
+#include "dynet/hsm-builder.h"
 
 #include <algorithm>
 #include <iostream>
@@ -24,9 +24,9 @@
 #include <boost/regex.hpp>
 
 using namespace std;
-using namespace cnn;
+using namespace dynet;
 
-cnn::Dict d;
+dynet::Dict d;
 int kSOS;
 int kEOS;
 
@@ -41,9 +41,9 @@ unsigned VOCAB_SIZE = 0;
 
 template <class Builder>
 struct RNNLanguageModel {
-  LookupParameters* p_c;
-  Parameters* p_R;
-  Parameters* p_bias;
+  LookupParameter p_c;
+  Parameter p_R;
+  Parameter p_bias;
   Builder builder;
 
   explicit RNNLanguageModel(Model& model) : builder(LAYERS, INPUT_DIM, HIDDEN_DIM, &model) {
@@ -112,7 +112,7 @@ struct RNNLanguageModel {
       
       unsigned w = 0;
       while (w == 0 || (int)w == kSOS) {
-        auto dist = as_vector(cg.incremental_forward());
+        auto dist = as_vector(cg.incremental_forward(ydist));
         double p = rand01();
         for (; w < dist.size(); ++w) {
           p -= dist[w];
@@ -120,7 +120,7 @@ struct RNNLanguageModel {
         }
         if (w == dist.size()) w = kEOS;
       }
-      cerr << (len == 1 ? "" : " ") << d.Convert(w);
+      cerr << (len == 1 ? "" : " ") << d.convert(w);
       cur = w;
     }
     cerr << endl;
@@ -128,13 +128,13 @@ struct RNNLanguageModel {
 };
 
 int main(int argc, char** argv) {
-  cnn::Initialize(argc, argv);
+  dynet::initialize(argc, argv);
   if (argc != 3 && argc != 4) {
     cerr << "Usage: " << argv[0] << " corpus.txt dev.txt [model.params]\n";
     return 1;
   }
-  kSOS = d.Convert("始");
-  kEOS = d.Convert("終");
+  kSOS = d.convert("始");
+  kEOS = d.convert("終");
   Model model;  
   vector<vector<int>> training, dev;
   string line;
@@ -146,14 +146,14 @@ int main(int argc, char** argv) {
     assert(in);
     while(getline(in, line)) {
       ++tlc;
-      training.push_back(ReadSentence(line, &d));
+      training.push_back(read_sentence(line, &d));
       ttoks += training.back().size();
     //put stuff back here later
     }
     cerr << tlc << " lines, " << ttoks << " tokens, " << d.size() << " types\n";
   }
-  d.Freeze(); // no new word types allowed
-  d.SetUnk("UNK");
+  d.freeze(); // no new word types allowed
+  //d.SetUnk("UNK");
   VOCAB_SIZE = d.size();
 
   int dlc = 0;
@@ -164,7 +164,7 @@ int main(int argc, char** argv) {
     assert(in);
     while(getline(in, line)) {
       ++dlc;
-      dev.push_back(ReadSentence(line, &d));
+      dev.push_back(read_sentence(line, &d));
       dtoks += dev.back().size();
     }
     cerr << dlc << " lines, " << dtoks << " tokens\n";
@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
   const string fname = os.str();
   cerr << "Parameters will be written to: " << fname << endl;
 
-  bool use_momentum = false;
+  //bool use_momentum = false;
   //if (use_momentum)
   //  sgd = new MomentumSGDTrainer(&model);
   //else
@@ -224,9 +224,9 @@ int main(int argc, char** argv) {
           auto& training_sentence = training[order[si]];
           chars += training_sentence.size();
           ++si;
-          lm.BuildLMGraph(training_sentence, cg);
-          loss += as_scalar(cg.incremental_forward());
-          cg.backward();
+          Expression loss_expr = lm.BuildLMGraph(training_sentence, cg);
+          loss += as_scalar(cg.forward(loss_expr));
+          cg.backward(loss_expr);
           sgd->update();
           ++lines;
       }
@@ -243,8 +243,8 @@ int main(int argc, char** argv) {
         int dchars = 0;
         for (auto& dev_sentence : dev) {
           ComputationGraph cg;
-          lm.BuildLMGraph(dev_sentence, cg);
-          dloss += as_scalar(cg.forward()); //check in the file thats having a problem, not able to find the index
+          Expression loss_expr = lm.BuildLMGraph(dev_sentence, cg);
+          dloss += as_scalar(cg.forward(loss_expr)); //check in the file thats having a problem, not able to find the index
           dchars += dev_sentence.size();
         }
         if (dloss < best) {
