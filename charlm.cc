@@ -277,6 +277,7 @@ int main(int argc, char** argv) {
   }
   else {
    Model model;
+   vector<string> training = ReadData(argv[1]);
    char_d.freeze();
    CHAR_DIM = char_d.size();
    CharLSTM<LSTMBuilder> word_lstm(model);
