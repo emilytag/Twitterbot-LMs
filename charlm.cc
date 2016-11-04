@@ -36,7 +36,7 @@ bool SAMPLE = true;
 unsigned LAYERS = 2; // Subject to change
 unsigned INPUT_DIM = 50; // Embedding vector size
 unsigned CHAR_DIM = 0; // Number of character types
-unsigned HIDDEN_DIM = 500;  // Kind of arbitrary
+unsigned HIDDEN_DIM = 300;  // Kind of arbitrary
 
 // Given the first character of a UTF8 block, find out how wide it is
 // See http://en.wikipedia.org/wiki/UTF-8 for more info
@@ -274,6 +274,19 @@ int main(int argc, char** argv) {
       }
     }
     delete sgd;
+  }
+  else {
+   Model model;
+   char_d.freeze();
+   CHAR_DIM = char_d.size();
+   CharLSTM<LSTMBuilder> word_lstm(model);
+   string infname = argv[4];
+   cerr << "Reading parameters from " << infname << "...\n";
+   ifstream in(infname);
+   assert(in);
+   boost::archive::text_iarchive ia(in);
+   ia >> model;
+   for (unsigned i = 0; i < 1000; ++i) word_lstm.RandomSample();
   }
 }
 
