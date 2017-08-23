@@ -46,7 +46,7 @@ struct RNNLanguageModel {
   Parameter p_bias;
   Builder builder;
 
-  explicit RNNLanguageModel(Model& model) : builder(LAYERS, INPUT_DIM, HIDDEN_DIM, &model) {
+  explicit RNNLanguageModel(Model& model) : builder(LAYERS, INPUT_DIM, HIDDEN_DIM, model) {
     p_c = model.add_lookup_parameters(VOCAB_SIZE, {INPUT_DIM}); 
     p_R = model.add_parameters({VOCAB_SIZE, HIDDEN_DIM});
     p_bias = model.add_parameters({VOCAB_SIZE});
@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
     assert(in);
     while(getline(in, line)) {
       ++tlc;
-      training.push_back(read_sentence(line, &d));
+      training.push_back(read_sentence(line, d));
       ttoks += training.back().size();
     //put stuff back here later
     }
@@ -164,7 +164,7 @@ int main(int argc, char** argv) {
     assert(in);
     while(getline(in, line)) {
       ++dlc;
-      dev.push_back(read_sentence(line, &d));
+      dev.push_back(read_sentence(line, d));
       dtoks += dev.back().size();
     }
     cerr << dlc << " lines, " << dtoks << " tokens\n";
@@ -182,7 +182,7 @@ int main(int argc, char** argv) {
   //if (use_momentum)
   //  sgd = new MomentumSGDTrainer(&model);
   //else
-  Trainer* sgd = new SimpleSGDTrainer(&model);
+  Trainer* sgd = new SimpleSGDTrainer(model);
   RNNLanguageModel<LSTMBuilder> lm(model);
 
   //RNNLanguageModel<SimpleRNNBuilder> lm(model);

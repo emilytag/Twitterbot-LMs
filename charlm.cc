@@ -68,7 +68,7 @@ struct CharLSTM {
   Parameter p_R;
   Parameter p_bias;
   Builder builder;
-  explicit CharLSTM(Model& model) : builder(LAYERS, INPUT_DIM, HIDDEN_DIM, &model) {
+  explicit CharLSTM(Model& model) : builder(LAYERS, INPUT_DIM, HIDDEN_DIM, model) {
     p_char = model.add_lookup_parameters(CHAR_DIM, {INPUT_DIM}); 
     p_R = model.add_parameters({CHAR_DIM, HIDDEN_DIM});
     p_bias = model.add_parameters({CHAR_DIM});
@@ -198,7 +198,7 @@ int main(int argc, char** argv) {
       //char_d.SetUnk("<unk>");
       CHAR_DIM = char_d.size();
 
-      Trainer* sgd = new SimpleSGDTrainer(&model);
+      Trainer* sgd = new SimpleSGDTrainer(model);
       CharLSTM<LSTMBuilder> word_lstm(model);
 
       string fname = argv[3];
