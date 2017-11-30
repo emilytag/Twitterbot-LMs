@@ -11,7 +11,7 @@
 #include "dynet/hsm-builder.h"
 #include "dynet/globals.h"
 #include "dynet/io.h"
-#include "dynet/examples/cpp/utils/cl-args.h"
+#include "dynet/examples/cpp-utils/cl-args.h"
 
 #include <iostream>
 #include <fstream>
@@ -110,7 +110,6 @@ struct CharLSTM {
     int len = 0;
     int cur = kSOS;
     while(len < max_len && cur != kEOS) {
-      ++len;
       Expression u_t = affine_transform({i_bias, i_R, h_t}); 
       Expression ydist = softmax(u_t);
       auto dist = as_vector(cg.incremental_forward(ydist));
