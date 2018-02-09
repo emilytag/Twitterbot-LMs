@@ -7,18 +7,25 @@ set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -Ofast -g")
 
 enable_testing()
 
-# look for Boost
-if(DEFINED ENV{BOOST_ROOT})
-  set(Boost_NO_SYSTEM_PATHS ON)
+if(ENABLE_BOOST)
+  message("-- Enabling Boost")
+  if(DEFINED ENV{BOOST_ROOT})
+    set(Boost_NO_SYSTEM_PATHS ON)
+    if(DEFINED ${Boost_INCLUDE_DIR})
+      get_filename_component(Boost_INCLUDE_DIR "${Boost_INCLUDE_DIR}" REALPATH BASE_DIR "${CMAKE_BINARY_DIR}")
+    endif()
+  endif()
+  set(Boost_REALPATH ON)
+  find_package(Boost COMPONENTS program_options regex serialization REQUIRED)
+  message("-- Boost dir is " ${Boost_INCLUDE_DIR})
+  include_directories(${Boost_INCLUDE_DIR})
+  if(MSVC)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /LIBPATH:${Boost_LIBRARY_DIRS}")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /LIBPATH:${Boost_LIBRARY_DIRS}")
+  else()
+    set(LIBS ${LIBS} ${Boost_LIBRARIES})
+  endif()
 endif()
-set(Boost_REALPATH ON)
-find_package(Boost COMPONENTS program_options serialization REQUIRED)
-include_directories(${Boost_INCLUDE_DIR})
-set(LIBS ${LIBS} ${Boost_LIBRARIES})
-
-# look for CNN
-#find_package(cnn REQUIRED)
-#include_directories(${cnn_INCLUDE_DIR})
 
 # look for Eigen
 find_package(Eigen3 REQUIRED)
@@ -34,6 +41,5 @@ ADD_EXECUTABLE(wordlm wordlm.cc)
 
 target_link_libraries(charlm dynet ${LIBS})
 target_link_libraries(wordlm dynet ${LIBS})
-
 
 enable_testing()

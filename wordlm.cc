@@ -110,11 +110,31 @@ struct RNNLanguageModel {
   }
 };
 
+unsigned read_data(const string& filename,
+                   vector<vector<int>>& data) {
+  unsigned num_tokens = 0;
+  ifstream in(filename);
+  size_t lc = 0;
+  string line;
+  while (getline(in, line)) {
+    ++lc;
+    data.push_back(read_sentence(line, d));
+    num_tokens += data.back().size();
+    }
+  return num_tokens;
+}
+
 int main(int argc, char** argv) {
   auto dyparams = dynet::extract_dynet_params(argc, argv);
   dynet::initialize(dyparams);
-  Params params; 
-  if (argc != 3 && argc != 4) {
+  Params params;
+  bool isTrain = true;
+  if (argc == 6){
+  if (!strcmp(argv[5], "-t")){
+    isTrain = false;
+  }
+  }
+  if (argc != 4 && argc != 5 && argc != 6) {
     cerr << "Usage: " << argv[0] << " corpus.txt dev.txt [model.params]\n";
     return 1;
   }
@@ -126,43 +146,21 @@ int main(int argc, char** argv) {
   float eta_decay_rate = params.eta_decay_rate;
   unsigned eta_decay_onset_epoch = params.eta_decay_onset_epoch; 
   vector<vector<int>> training, dev;
-  string line;
-  int tlc = 0;
-  int ttoks = 0;
-  cerr << "Reading training data from " << argv[1] << "...\n";
-  {
-    ifstream in(argv[1]);
-    assert(in);
-    while(getline(in, line)) {
-      ++tlc;
-      training.push_back(read_sentence(line, d));
-      ttoks += training.back().size();
-    //put stuff back here later
-    }
-    cerr << tlc << " lines, " << ttoks << " tokens, " << d.size() << " types\n";
-  }
+  cerr << "Reading data from " << argv[1] << " ...\n";
+  read_data(argv[1], training);
+  cerr << "Reading data from " << argv[2] << " ...\n";
+  read_data(argv[2], dev);
   d.freeze(); // no new word types allowed
   VOCAB_SIZE = d.size();
 
   int dlc = 0;
   int dtoks = 0;
-  cerr << "Reading dev data from " << argv[2] << "...\n";
-  {
-    ifstream in(argv[2]);
-    assert(in);
-    while(getline(in, line)) {
-      ++dlc;
-      dev.push_back(read_sentence(line, d));
-      dtoks += dev.back().size();
-    }
-    cerr << dlc << " lines, " << dtoks << " tokens\n";
-  }
   ostringstream os;
   os << "lm"
      << '_' << LAYERS
      << '_' << INPUT_DIM
      << '_' << HIDDEN_DIM
-     << "-pid" << getpid() << ".params";
+     << ".params";
   const string fname = os.str();
   cerr << "Parameters will be written to: " << fname << endl;
 
@@ -177,7 +175,7 @@ int main(int argc, char** argv) {
         TextFileLoader loader(infname);
         loader.populate(model);
   }
-
+  if (isTrain) {
   double best = 9e+99;
   unsigned report_every_i = 100;
   unsigned dev_every_i_reports = 10;
@@ -240,3 +238,11 @@ int main(int argc, char** argv) {
       }
     }
   }
+else{
+string infname = argv[4];
+cerr << "Reading parameters from " << infname << "...\n";
+TextFileLoader loader(infname);
+loader.populate(model);
+for (unsigned i = 0; i < 1000; ++i) lm.RandomSample();
+}
+}
