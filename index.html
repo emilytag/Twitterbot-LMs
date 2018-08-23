@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Training Perplexity</title>
+		<script type="text/javascript" src="https://d3js.org/d3.v4.min.js"></script>
+		<style type="text/css">
+        .axis text {
+            font-family: sans-serif;
+            font-size: 8px;
+        }
+		</style>
+	</head>
+	<body>
+		<h1>Training Perplexity</h1>
+		<div id="chart"</div>
+		<script type="text/javascript">
+
+        margin = {top: 20, right: 20, bottom: 30, left: 30},
+        width = 870 - margin.left - margin.right,
+        height = 450 - margin.top - margin.bottom;
+
+        d3.csv("train.csv", function(d) {
+          return {
+            epoch: +d.epoch, // convert "Year" column to Date
+            ppl: +d.ppl,
+          };
+        }, function(error, data) {
+
+        
+        var graph_max = d3.max(data.slice(-10), function (d) { return d.ppl });
+        var x_max = d3.max(data.slice(-10), function (d) { return d.epoch  });
+        var x_min = d3.min(data.slice(-10), function (d) { return d.epoch  });
+        var graph_min = d3.min(data.slice(-10), function (d) { return d.ppl  }) - 0.07;
+
+            var x = d3.scaleLinear()
+                      .domain([x_min, x_max])
+                      .range([0, width])
+            var y = d3.scaleLinear()
+                    .domain([graph_min, graph_max])
+                    .range([height, 0]);
+
+            var xAxis = d3.axisBottom()
+                          .scale(x);
+            var yAxis = d3.axisLeft()
+                          .scale(y);
+
+            var line = d3.line()
+                         .x(function(d) { return x(d.epoch); })
+                         .y(function(d) { return y(d.ppl); })
+
+
+            var svg = d3.select("#chart")
+                        .append("svg");
+
+            var chart = svg.attr("width", width + margin.left + margin.right)
+                           .attr("height", height + margin.top + margin.bottom)
+                           .append("g")
+                           .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+                         
+
+            chart.append("path")
+                          .datum(data.slice(-10))
+                          .attr("class", "line")
+                          .attr("d", line)
+                          .attr("fill", "none")
+                          .attr("stroke", "black")
+                          .attr("stroke-width", "1")
+
+            chart.append("g")
+                 .attr("class", "x axis")
+                 .attr("transform", "translate(0," + height + ")")
+                 .call(xAxis);
+            chart.append("g")
+                 .attr("class", "y axis")
+                 .call(yAxis);
+
+        });
+			
+		</script>
+	</body>
+</html>

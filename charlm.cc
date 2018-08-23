@@ -162,6 +162,9 @@ vector<string> ReadData(string filename) {
 
 
 int main(int argc, char** argv) {
+  std::ofstream myfile("train.csv");
+  myfile << "epoch,ppl\n";
+  myfile.flush();
   auto dyparams = dynet::extract_dynet_params(argc, argv);
   dynet::initialize(dyparams);
   Params params;
@@ -258,8 +261,10 @@ int main(int argc, char** argv) {
           TextFileSaver saver(fname);
           saver.save(model);
         }
-        cerr << "\n***DEV [epoch=" << (lines / (double)training.size()) << "] E = " << (dloss / dchars) << " ppl=" << exp(dloss / dchars) << '\n';
-      }
+        //cerr << "\n***DEV [epoch=" << (lines / (double)training.size()) << "] E = " << (dloss / dchars) << " ppl=" << exp(dloss / dchars) << '\n';
+        myfile << (lines / (double)training.size()) << "," << exp(dloss / dchars) << "\n";
+	myfile.flush();
+	}
     }
 }
   else {
